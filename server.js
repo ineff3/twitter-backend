@@ -3,6 +3,7 @@ import express from 'express'
 import mongoose from 'mongoose'
 import morgan from 'morgan'
 import bodyParser from 'body-parser'
+import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import routes from './routes/index.js'
 
@@ -13,10 +14,11 @@ mongoose.connect(
 /**
  * App Configuration
  */
+app.use(cors({ credentials: true, origin: 'http://localhost:5173' }))
 app.use(morgan('dev'))
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
-app.use(cors())
+app.use(cookieParser())
 app.use(routes)
 
 /**

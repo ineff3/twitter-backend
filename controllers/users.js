@@ -60,18 +60,103 @@ const UserController = {
 				)
 			}
 
-			const token = jwt.sign(
+			const accessToken = jwt.sign(
 				{ email: user.email, _id: user._id },
-				process.env.JWT_KEY,
+				process.env.ACCESS_TOKEN_SECRET,
 				{
-					expiresIn: '1h',
+					expiresIn: '10s',
+				}
+			)
+			const refreshToken = jwt.sign(
+				{ email: user.email, _id: user._id },
+				process.env.REFRESH_TOKEN_SECRET,
+				{
+					expiresIn: '1d',
+				}
+			)
+			// saving refresh token into db
+			user.refreshToken = refreshToken
+			const result = await user.save()
+
+			// Creates Secure Cookie with refresh token
+			res.cookie('jwt', refreshToken, {
+				httpOnly: true,
+				secure: true,
+				sameSite: 'None',
+				// maxAge: 15 * 1000,
+				maxAge: 24 * 60 * 60 * 1000,
+			})
+
+			// Send authorization access token to user
+			res.json({ accessToken })
+		} catch (err) {
+			next(err)
+		}
+	},
+
+	handleRefreshToken: async (req, res, next) => {
+		try {
+			const refreshToken = req.cookies.jwt
+			if (!refreshToken) {
+				throw new ServerError(401, 'Refresh token cookie not found')
+			}
+
+			const user = await UserModel.findOne({ refreshToken }).exec()
+			if (!user) {
+				throw new ServerError(
+					401,
+					'Authorization failed: user not found'
+				)
+			}
+
+			// throws error if token is not veryfied properly
+			const decoded = jwt.verify(
+				refreshToken,
+				process.env.REFRESH_TOKEN_SECRET
+			)
+
+			const accessToken = jwt.sign(
+				{ email: user.email, _id: user._id },
+				process.env.ACCESS_TOKEN_SECRET,
+				{
+					expiresIn: '10s',
 				}
 			)
 			res.status(200).json({
-				message: 'Successfully authorized',
-				token: token,
-				user: user,
+				accessToken,
 			})
+		} catch (err) {
+			next(err)
+		}
+	},
+
+	logout: async (req, res, next) => {
+		try {
+			const refreshToken = req.cookies.jwt
+			if (!refreshToken) {
+				throw new ServerError(401, 'Refresh token cookie not found')
+			}
+
+			// Is refreshToken in db?
+			const user = await UserModel.findOne({ refreshToken }).exec()
+			if (!user) {
+				res.clearCookie('jwt', {
+					httpOnly: true,
+					sameSite: 'None',
+					secure: true,
+				})
+				return res.sendStatus(204)
+			}
+
+			user.refreshToken = ''
+			await user.save()
+
+			res.clearCookie('jwt', {
+				httpOnly: true,
+				sameSite: 'None',
+				secure: true,
+			})
+			res.sendStatus(204)
 		} catch (err) {
 			next(err)
 		}

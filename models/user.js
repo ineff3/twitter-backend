@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema({
 		match: /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/,
 	},
 	password: { type: String, required: true },
+	refreshToken: String,
 })
 
 export default mongoose.model('User', userSchema)

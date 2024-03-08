@@ -10,6 +10,10 @@ const userSchema = new mongoose.Schema({
 		unique: true,
 		match: /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/,
 	},
+	username: {
+		type: String,
+		unique: true,
+	},
 	password: { type: String, required: true },
 	refreshToken: String,
 })

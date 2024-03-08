@@ -3,6 +3,7 @@ import UserModel from '../models/user.js'
 import ServerError from '../utils/server-error.js'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
+import generateUsernamesArray from '../utils/generate-usernames.js'
 
 const UserController = {
 	signup: (req, res, next) => {
@@ -13,19 +14,24 @@ const UserController = {
 				if (user) {
 					throw new ServerError(
 						409,
-						'User with such email alrealy exists'
+						'Auth failed: User with such email already exists'
 					)
 				} else {
 					bcrypt.hash(password, 10, (err, hash) => {
 						if (err) {
 							next(err)
 						} else {
+							const userName = generateUsernamesArray(
+								firstName,
+								1
+							)
 							UserModel.create({
 								_id: new mongoose.Types.ObjectId(),
 								firstName: firstName,
 								secondName: secondName,
 								email: email,
 								password: hash,
+								username: userName[0],
 							})
 								.then((result) => {
 									console.log(result)
@@ -56,7 +62,7 @@ const UserController = {
 			if (!match) {
 				throw new ServerError(
 					401,
-					'Authorization failed: passwords do not match'
+					'Authorization failed: wrong credentials'
 				)
 			}
 
@@ -64,7 +70,7 @@ const UserController = {
 				{ email: user.email, _id: user._id },
 				process.env.ACCESS_TOKEN_SECRET,
 				{
-					expiresIn: '10s',
+					expiresIn: '1h',
 				}
 			)
 			const refreshToken = jwt.sign(
@@ -119,7 +125,7 @@ const UserController = {
 				{ email: user.email, _id: user._id },
 				process.env.ACCESS_TOKEN_SECRET,
 				{
-					expiresIn: '10s',
+					expiresIn: '1h',
 				}
 			)
 			res.status(200).json({
@@ -157,6 +163,81 @@ const UserController = {
 				secure: true,
 			})
 			res.sendStatus(204)
+		} catch (err) {
+			next(err)
+		}
+	},
+
+	//requires check-auth middleware
+	getUserByAccessToken: async (req, res, next) => {
+		try {
+			const user = await UserModel.findById(req.userId)
+				.select(' -refreshToken -__v')
+				.exec()
+			if (!user) {
+				throw new ServerError(404, 'User not found')
+			}
+			res.status(200).json(user)
+		} catch (err) {
+			next(err)
+		}
+	},
+
+	//requires auth. Based on first name
+	getRandomUsernames: async (req, res, next) => {
+		try {
+			const user = await UserModel.findById(req.userId).exec()
+			if (!user) {
+				throw new ServerError(404, 'User not found')
+			}
+			const firstName = user.firstName
+			const possibleUsernames = []
+			while (possibleUsernames.length < 5) {
+				const userNames = generateUsernamesArray(firstName, 5)
+				await Promise.all(
+					userNames.map(async (userName) => {
+						const response = UserModel.findOne({
+							username: userName,
+						}).exec()
+						if (response) {
+							possibleUsernames.push(userName)
+						}
+					})
+				)
+			}
+
+			res.status(200).json({ usernames: possibleUsernames })
+		} catch (err) {
+			next(err)
+		}
+	},
+
+	checkUsernameIsReserved: async (req, res, next) => {
+		try {
+			const username = req.body.username
+			if (!username) throw new ServerError(404, 'Username not provided')
+			const user = await UserModel.findOne({ username: username })
+
+			if (!user) {
+				res.status(200).json({ isReserved: false })
+			} else {
+				res.status(200).json({ isReserved: true })
+			}
+		} catch (err) {
+			next(err)
+		}
+	},
+
+	updateUsername: async (req, res, next) => {
+		try {
+			const username = req.body.username
+			if (!username) throw new ServerError(404, 'Username not provided')
+
+			const user = await UserModel.findOneAndUpdate(
+				{ _id: req.userId },
+				{ $set: { username: username } }
+			).exec()
+			res.sendStatus(200)
 		} catch (err) {
 			next(err)
 		}

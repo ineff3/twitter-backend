@@ -8,6 +8,7 @@ const checkAuth = (req, res, next) => {
 			return res.status(401).json({ message: 'Auth failed' })
 		const token = authHeader.split(' ')[1]
 		const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
+		req.userId = decoded?._id
 	} catch (err) {
 		console.log(err)
 		return res.status(403).json({

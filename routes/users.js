@@ -12,6 +12,21 @@ router.get('/logout', UserController.logout)
 
 router.get('/refresh', UserController.handleRefreshToken)
 
+router.get('/getAuthorizedUser', checkAuth, UserController.getUserByAccessToken)
+
+router.get(
+	'/getPossibleUsernames',
+	checkAuth,
+	UserController.getRandomUsernames
+)
+router.post(
+	'/checkUsernameIsReserved',
+	checkAuth,
+	UserController.checkUsernameIsReserved
+)
+
+router.patch('/updateUsername', checkAuth, UserController.updateUsername)
+
 router.get('/', checkAuth, (req, res, next) => {
 	res.status(200).json({ lol: 'kek' })
 })

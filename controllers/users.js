@@ -4,6 +4,7 @@ import ServerError from '../utils/server-error.js'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import generateUsernamesArray from '../utils/generate-usernames.js'
+import fs from 'fs-extra'
 
 const UserController = {
 	signup: (req, res, next) => {
@@ -231,12 +232,42 @@ const UserController = {
 	updateUsername: async (req, res, next) => {
 		try {
 			const username = req.body.username
-			if (!username) throw new ServerError(404, 'Username not provided')
+			if (!username)
+				throw new ServerError(404, 'Username is not provided')
 
 			const user = await UserModel.findOneAndUpdate(
 				{ _id: req.userId },
 				{ $set: { username: username } }
 			).exec()
+			res.sendStatus(200)
+		} catch (err) {
+			next(err)
+		}
+	},
+
+	//requires image middleware
+	updateUserImage: async (req, res, next) => {
+		try {
+			console.log(req.file)
+			if (!req.file) {
+				throw new ServerError(404, 'UserImage is not provided')
+			}
+			const user = await UserModel.findById(req.userId).exec()
+			if (!user) {
+				throw new ServerError(404, 'User is not found')
+			}
+			const oldPhoto = user.userImage
+			if (oldPhoto) {
+				await fs.remove(oldPhoto)
+			}
+
+			user.userImage = req.file.path
+			await user.save()
+
+			// const user = await UserModel.findOneAndUpdate(
+			// 	{ _id: req.userId },
+			// 	{ $set: { userImage: req.file.path } }
+			// ).exec()
 			res.sendStatus(200)
 		} catch (err) {
 			next(err)

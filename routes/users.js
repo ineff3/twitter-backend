@@ -1,17 +1,20 @@
 import { Router } from 'express'
-import UserController from '../controllers/users.js'
+import {
+	UserController,
+	UserAuthController,
+} from '../controllers/users/index.js'
 import checkAuth from '../middlewares/check-auth.js'
 import upload from '../middlewares/handleImage.js'
 
 const router = Router()
 
-router.post('/signup', UserController.signup)
+router.post('/signup', UserAuthController.signup)
 
-router.post('/login', UserController.login)
+router.post('/login', UserAuthController.login)
 
-router.get('/logout', UserController.logout)
+router.get('/logout', UserAuthController.logout)
 
-router.get('/refresh', UserController.handleRefreshToken)
+router.get('/refresh', UserAuthController.handleRefreshToken)
 
 router.get('/getAuthorizedUser', checkAuth, UserController.getUserByAccessToken)
 
@@ -35,8 +38,10 @@ router.get('/', checkAuth, (req, res, next) => {
 router.patch(
 	'/updateUserImage',
 	checkAuth,
-	upload.single('userImage'),
+	upload('users').single('userImage'),
 	UserController.updateUserImage
 )
+
+router.get('/:username', checkAuth, UserController.fetchUserProfile)
 
 export default router

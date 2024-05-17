@@ -8,14 +8,17 @@ import cors from 'cors'
 import routes from './routes/index.js'
 
 const app = express()
-mongoose.connect(
-	`mongodb+srv://maksym:${process.env.MONGO_ATLAS_PW}@node-backend.qnafux1.mongodb.net/twitter_clone?retryWrites=true&w=majority`
-)
+mongoose.connect(process.env.DB_CONNECTION_STRING)
 /**
  * App Configuration
  */
 app.use('/uploads', express.static('uploads'))
-app.use(cors({ credentials: true, origin: 'http://localhost:5173' }))
+app.use(
+	cors({
+		credentials: true,
+		origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+	})
+)
 app.use(morgan('dev'))
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())

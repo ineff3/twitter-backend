@@ -19,7 +19,10 @@ This is the backend part of the Twitter clone project built with Node.js, Expres
     ```
 
 2. Install dependencies:
-   npm install
+
+    ```
+    npm install
+    ```
 
 3. Set up environment variables:
 
@@ -48,3 +51,13 @@ This is the backend part of the Twitter clone project built with Node.js, Expres
     ```
     nodemon server
     ```
+
+## Environment Variables
+
+Make sure to set up the following environment variables in your `.env` file:
+
+-   `DB_CONNECTION_STRING`: Your MongoDB connection string.
+-   `ACCESS_TOKEN_SECRET`: Secret key for generating access tokens.
+-   `REFRESH_TOKEN_SECRET`: Secret key for generating refresh tokens.
+-   `PORT`: Port number for the server (default is 3000).
+-   `CORS_ORIGIN`: The origin URL for CORS (your frontend's URL).

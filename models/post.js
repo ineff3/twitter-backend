@@ -8,7 +8,7 @@ const postSchema = new mongoose.Schema({
 		required: true,
 	},
 	dateCreated: { type: String, required: true },
-	liked: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+	likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 	text: { type: String },
 	postImages: [{ type: String }],
 })

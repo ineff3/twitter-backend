@@ -49,7 +49,7 @@ This is the backend part of the Twitter clone project built with Node.js, Expres
 4. Start the server:
 
     ```
-    nodemon server
+    node server
     ```
 
 ## Environment Variables

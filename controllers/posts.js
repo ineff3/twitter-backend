@@ -5,7 +5,6 @@ import ServerError from '../utils/server-error.js'
 import refactorPost from '../utils/refactorPost.js'
 
 const PostController = {
-	//requires image middleware
 	createPost: async (req, res, next) => {
 		try {
 			console.log(req.files)
@@ -36,52 +35,50 @@ const PostController = {
 			next(err)
 		}
 	},
-	getAllPosts: async (req, res, next) => {
-		try {
-			const posts = await PostModel.find()
-				.populate({
-					path: 'author',
-					select: '_id firstName secondName username userImage',
-				})
-				.exec()
-			const user = await UserModel.findById(req.userId).exec()
-			const updatedPosts = posts.map((post) => {
-				const refactoredPostObj = refactorPost(post, user)
-				return refactoredPostObj
-				// return {
-				// 	...postObj,
-				// 	likedBy: post.likedBy.length,
-				// 	isLiked: post.likedBy.indexOf(req.userId) != -1,
-				// 	isBookmarked: user.bookmarks.indexOf(post._id) != -1,
-				// }
-			})
-			res.status(200).json(updatedPosts)
-		} catch (err) {
-			next(err)
-		}
-	},
-	getBookmarkedPosts: async (req, res, next) => {
-		try {
-			const userInitial = await UserModel.findById(req.userId).exec()
-			const user = await UserModel.findById(req.userId)
-				.populate({
-					path: 'bookmarks',
-					populate: {
-						path: 'author',
-						select: '_id firstName secondName username userImage',
-					},
-				})
-				.exec()
-			const refactoredBookmarks = user.bookmarks.map((post) => {
-				const refactoredBookmarksObj = refactorPost(post, userInitial)
-				return refactoredBookmarksObj
-			})
-
-			res.status(200).json(refactoredBookmarks)
-		} catch (err) {
-			next(err)
-		}
-	},
+	// 	try {
+	// 		const posts = await PostModel.find()
+	// 			.populate({
+	// 				path: 'author',
+	// 				select: '_id firstName secondName username userImage',
+	// 			})
+	// 			.exec()
+	// 		const user = await UserModel.findById(req.userId).exec()
+	// 		const updatedPosts = posts.map((post) => {
+	// 			const refactoredPostObj = refactorPost(post, user)
+	// 			return refactoredPostObj
+	// 			// return {
+	// 			// 	...postObj,
+	// 			// 	likedBy: post.likedBy.length,
+	// 			// 	isLiked: post.likedBy.indexOf(req.userId) != -1,
+	// 			// 	isBookmarked: user.bookmarks.indexOf(post._id) != -1,
+	// 			// }
+	// 		})
+	// 		res.status(200).json(updatedPosts)
+	// 	} catch (err) {
+	// 		next(err)
+	// 	}
+	// },
+	// getBookmarkedPosts: async (req, res, next) => {
+	// 	try {
+	// 		const userInitial = await UserModel.findById(req.userId).exec()
+	// 		const user = await UserModel.findById(req.userId)
+	// 			.populate({
+	// 				path: 'bookmarks',
+	// 				populate: {
+	// 					path: 'author',
+	// 					select: '_id firstName secondName username userImage',
+	// 				},
+	// 			})
+	// 			.exec()
+	// 		const refactoredBookmarks = user.bookmarks.map((post) => {
+	// 			return refactorPost(post, userInitial)
+	// 		})
+	// 		res.status(200).json(refactoredBookmarks)
+	// 	} catch (err) {
+	// 		next(err)
+	// 	}
+	// },
+	//+
 	likePost: async (req, res, next) => {
 		const postId = req.body.postId
 		try {
@@ -127,6 +124,50 @@ const PostController = {
 			next(err)
 		}
 	},
+	getPosts: async (req, res, next) => {
+		try {
+			let posts = []
+			if (req.query.bookmarked === 'true') {
+				posts = await getBookmarkedPosts(req.userId)
+			} else {
+				posts = await getAllPosts(req.userId)
+			}
+
+			res.status(200).json(posts)
+		} catch (err) {
+			next(err)
+		}
+	},
+}
+
+const getAllPosts = async (userId) => {
+	const posts = await PostModel.find()
+		.populate({
+			path: 'author',
+			select: '_id firstName secondName username userImage',
+		})
+		.exec()
+	const user = await UserModel.findById(userId).exec()
+	const updatedPosts = posts.map((post) => {
+		return refactorPost(post, user)
+	})
+	return updatedPosts
+}
+const getBookmarkedPosts = async (userId) => {
+	const userInitial = await UserModel.findById(userId).exec()
+	const user = await UserModel.findById(userId)
+		.populate({
+			path: 'bookmarks',
+			populate: {
+				path: 'author',
+				select: '_id firstName secondName username userImage',
+			},
+		})
+		.exec()
+	const refactoredBookmarks = user.bookmarks.map((post) => {
+		return refactorPost(post, userInitial)
+	})
+	return refactoredBookmarks
 }
 
 export default PostController

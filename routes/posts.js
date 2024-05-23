@@ -5,19 +5,17 @@ import PostController from '../controllers/posts.js'
 
 const router = Router()
 
-router.get('/getPosts', checkAuth, PostController.getAllPosts)
+router.post('/like', checkAuth, PostController.likePost)
 
-router.get('/getBookmarkedPosts', checkAuth, PostController.getBookmarkedPosts)
+router.post('/bookmark', checkAuth, PostController.bookmarkPost)
+
+router.get('', checkAuth, PostController.getPosts)
 
 router.post(
-	'/createPost',
+	'',
 	checkAuth,
 	upload('posts').array('postImages', 4),
 	PostController.createPost
 )
-
-router.post('/likePost', checkAuth, PostController.likePost)
-
-router.post('/bookmarkPost', checkAuth, PostController.bookmarkPost)
 
 export default router

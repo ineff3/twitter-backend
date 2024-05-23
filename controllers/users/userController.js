@@ -5,10 +5,10 @@ import fs from 'fs-extra'
 
 const UserController = {
 	//requires check-auth middleware
-	getUserByAccessToken: async (req, res, next) => {
+	getCurrentUserPreview: async (req, res, next) => {
 		try {
 			const user = await UserModel.findById(req.userId)
-				.select(' -refreshToken -__v')
+				.select(' _id firstName username userImage')
 				.exec()
 			if (!user) {
 				throw new ServerError(404, 'User not found')
@@ -64,53 +64,50 @@ const UserController = {
 		}
 	},
 
-	updateUsername: async (req, res, next) => {
-		try {
-			const username = req.body.username
-			if (!username)
-				throw new ServerError(404, 'Username is not provided')
+	// 		const username = req.body.username
+	// 		if (!username)
+	// 			throw new ServerError(404, 'Username is not provided')
 
-			const user = await UserModel.findOneAndUpdate(
-				{ _id: req.userId },
-				{ $set: { username: username } }
-			).exec()
-			res.sendStatus(200)
-		} catch (err) {
-			next(err)
-		}
-	},
+	// 		const user = await UserModel.findOneAndUpdate(
+	// 			{ _id: req.userId },
+	// 			{ $set: { username: username } }
+	// 		).exec()
+	// 		res.sendStatus(200)
+	// 	} catch (err) {
+	// 		next(err)
+	// 	}
+	// },
 
-	//requires image middleware
-	updateUserImage: async (req, res, next) => {
-		try {
-			console.log(req.file)
-			if (!req.file) {
-				throw new ServerError(404, 'UserImage is not provided')
-			}
-			const user = await UserModel.findById(req.userId).exec()
-			if (!user) {
-				throw new ServerError(404, 'User is not found')
-			}
-			const oldPhoto = user.userImage
-			if (oldPhoto) {
-				await fs.remove(oldPhoto)
-			}
+	// //requires image middleware
+	// updateUserImage: async (req, res, next) => {
+	// 	try {
+	// 		if (!req.file) {
+	// 			throw new ServerError(404, 'UserImage is not provided')
+	// 		}
+	// 		const user = await UserModel.findById(req.userId).exec()
+	// 		if (!user) {
+	// 			throw new ServerError(404, 'User is not found')
+	// 		}
+	// 		const oldPhoto = user.userImage
+	// 		if (oldPhoto) {
+	// 			await fs.remove(oldPhoto)
+	// 		}
 
-			user.userImage = req.file.path
-			await user.save()
+	// 		user.userImage = req.file.path
+	// 		await user.save()
 
-			// const user = await UserModel.findOneAndUpdate(
-			// 	{ _id: req.userId },
-			// 	{ $set: { userImage: req.file.path } }
-			// ).exec()
-			res.sendStatus(200)
-		} catch (err) {
-			next(err)
-		}
-	},
+	// 		// const user = await UserModel.findOneAndUpdate(
+	// 		// 	{ _id: req.userId },
+	// 		// 	{ $set: { userImage: req.file.path } }
+	// 		// ).exec()
+	// 		res.sendStatus(200)
+	// 	} catch (err) {
+	// 		next(err)
+	// 	}
+	// },
 
 	//requires auth
-	fetchUserProfile: async (req, res, next) => {
+	getUserByName: async (req, res, next) => {
 		try {
 			const currentAuthorizedUserId = req.userId
 			const providedUsername = req.params.username
@@ -121,7 +118,9 @@ const UserController = {
 
 			const providedUser = await UserModel.findOne({
 				username: providedUsername,
-			}).exec()
+			})
+				.select(' -refreshToken -__v -password')
+				.exec()
 			if (!providedUser) {
 				throw new ServerError(
 					404,
@@ -143,6 +142,52 @@ const UserController = {
 			next(err)
 		}
 	},
+
+	updateUser: async (req, res, next) => {
+		const { updateType, newValue } = req.body
+
+		try {
+			switch (updateType) {
+				case 'username':
+					await updateUsername(req.userId, newValue)
+					res.sendStatus(200)
+					break
+				case 'userImage':
+					await updateUserImage(req.userId, req.file)
+					res.sendStatus(200)
+					break
+				default:
+					throw new ServerError(404, 'Invalid update type')
+			}
+		} catch (err) {
+			next(err)
+		}
+	},
+}
+
+const updateUsername = async (userId, newUsername) => {
+	if (!newUsername) throw new ServerError(404, 'Username is not provided')
+	await UserModel.findOneAndUpdate(
+		{ _id: userId },
+		{ $set: { username: newUsername } }
+	).exec()
+}
+
+const updateUserImage = async (userId, newUserImage) => {
+	if (!newUserImage) {
+		throw new ServerError(404, 'UserImage is not provided')
+	}
+	const user = await UserModel.findById(userId).exec()
+	if (!user) {
+		throw new ServerError(404, 'User is not found')
+	}
+	const oldPhoto = user.userImage
+	if (oldPhoto) {
+		await fs.remove(oldPhoto)
+	}
+
+	user.userImage = newUserImage.path
+	await user.save()
 }
 
 export default UserController

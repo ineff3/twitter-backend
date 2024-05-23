@@ -16,32 +16,27 @@ router.get('/logout', UserAuthController.logout)
 
 router.get('/refresh', UserAuthController.handleRefreshToken)
 
-router.get('/getAuthorizedUser', checkAuth, UserController.getUserByAccessToken)
-
 router.get(
-	'/getPossibleUsernames',
+	'/currentUserPreview',
 	checkAuth,
-	UserController.getRandomUsernames
+	UserController.getCurrentUserPreview
 )
+
+router.get('/usernames', checkAuth, UserController.getRandomUsernames)
+
 router.post(
 	'/checkUsernameIsReserved',
 	checkAuth,
 	UserController.checkUsernameIsReserved
 )
 
-router.patch('/updateUsername', checkAuth, UserController.updateUsername)
-
-router.get('/', checkAuth, (req, res, next) => {
-	res.status(200).json({ lol: 'kek' })
-})
-
 router.patch(
-	'/updateUserImage',
+	'/',
 	checkAuth,
 	upload('users').single('userImage'),
-	UserController.updateUserImage
+	UserController.updateUser
 )
 
-router.get('/:username', checkAuth, UserController.fetchUserProfile)
+router.get('/:username', checkAuth, UserController.getUserByName)
 
 export default router

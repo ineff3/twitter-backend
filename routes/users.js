@@ -36,6 +36,15 @@ router.patch(
 	upload('users').single('userImage'),
 	UserController.updateUser
 )
+router.put(
+	'/',
+	checkAuth,
+	upload('users').fields([
+		{ name: 'userImage', maxCount: 1 },
+		{ name: 'backgroundImage', maxCount: 1 },
+	]),
+	UserController.editAccount
+)
 
 router.get('/:username', checkAuth, UserController.getUserByName)
 

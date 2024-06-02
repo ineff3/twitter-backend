@@ -35,7 +35,6 @@ const PostController = {
 			next(err)
 		}
 	},
-	// 	try {
 	// 		const posts = await PostModel.find()
 	// 			.populate({
 	// 				path: 'author',
@@ -126,34 +125,64 @@ const PostController = {
 	},
 	getPosts: async (req, res, next) => {
 		try {
+			const { bookmarked, limit, page } = req.query
+			const userId = req.userId
+
+			const paginationLimit = parseInt(limit) || 10
+			const paginationPage = parseInt(page) || 1
+			const skip = (paginationPage - 1) * paginationLimit
+
 			let posts = []
-			if (req.query.bookmarked === 'true') {
-				posts = await getBookmarkedPosts(req.userId)
+			let totalCount = 0
+			if (bookmarked === 'true') {
+				;({ posts, totalCount } = await getBookmarkedPosts(
+					userId,
+					paginationLimit,
+					skip
+				))
 			} else {
-				posts = await getAllPosts(req.userId)
+				;({ posts, totalCount } = await getAllPosts(
+					userId,
+					paginationLimit,
+					skip
+				))
 			}
 
-			res.status(200).json(posts)
+			const totalPages = Math.ceil(totalCount / paginationLimit)
+			const nextPage =
+				paginationPage < totalPages ? paginationPage + 1 : null
+
+			res.status(200).json({
+				data: posts,
+				nextPage,
+				totalPages,
+			})
 		} catch (err) {
 			next(err)
 		}
 	},
 }
 
-const getAllPosts = async (userId) => {
-	const posts = await PostModel.find()
-		.populate({
-			path: 'author',
-			select: '_id firstName secondName username userImage',
-		})
-		.exec()
+const getAllPosts = async (userId, limit, skip) => {
+	const [posts, totalCount] = await Promise.all([
+		PostModel.find()
+			.populate({
+				path: 'author',
+				select: '_id firstName secondName username userImage',
+			})
+			.limit(limit)
+			.skip(skip)
+			.exec(),
+		PostModel.countDocuments().exec(),
+	])
+
 	const user = await UserModel.findById(userId).exec()
-	const updatedPosts = posts.map((post) => {
-		return refactorPost(post, user)
-	})
-	return updatedPosts
+	const updatedPosts = posts.map((post) => refactorPost(post, user))
+
+	return { posts: updatedPosts, totalCount }
 }
-const getBookmarkedPosts = async (userId) => {
+
+const getBookmarkedPosts = async (userId, limit, skip) => {
 	const userInitial = await UserModel.findById(userId).exec()
 	const user = await UserModel.findById(userId)
 		.populate({
@@ -162,12 +191,16 @@ const getBookmarkedPosts = async (userId) => {
 				path: 'author',
 				select: '_id firstName secondName username userImage',
 			},
+			options: { limit, skip },
 		})
 		.exec()
-	const refactoredBookmarks = user.bookmarks.map((post) => {
-		return refactorPost(post, userInitial)
-	})
-	return refactoredBookmarks
+
+	const refactoredBookmarks = user.bookmarks.map((post) =>
+		refactorPost(post, userInitial)
+	)
+	const totalCount = userInitial.bookmarks.length
+
+	return { posts: refactoredBookmarks, totalCount }
 }
 
 export default PostController

@@ -163,6 +163,39 @@ const UserController = {
 			next(err)
 		}
 	},
+
+	editAccount: async (req, res, next) => {
+		const { userImage, backgroundImage } = req.files
+		const { firstName, secondName, bio, location, link } = req.body
+
+		const user = await UserModel.findById(req.userId).exec()
+
+		if (firstName !== undefined) user.firstName = firstName
+		if (secondName !== undefined) user.secondName = secondName
+		if (bio !== undefined) user.bio = bio
+		if (location !== undefined) user.location = location
+		if (link !== undefined) user.link = link
+
+		console.log(userImage)
+
+		if (userImage?.length > 0) {
+			const oldUserImage = user.userImage
+			if (oldUserImage) {
+				await fs.remove(oldUserImage)
+			}
+			user.userImage = userImage[0].path
+		}
+		if (backgroundImage?.length > 0) {
+			const oldBackgroundImage = user.backgroundImage
+			if (oldBackgroundImage) {
+				await fs.remove(oldBackgroundImage)
+			}
+			user.backgroundImage = backgroundImage[0].path
+		}
+
+		await user.save()
+		res.sendStatus(200)
+	},
 }
 
 const updateUsername = async (userId, newUsername) => {

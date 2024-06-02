@@ -10,11 +10,17 @@ const userSchema = new mongoose.Schema({
 		unique: true,
 		match: /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/,
 	},
+	bio: { type: String },
+	location: { type: String },
+	link: { type: String },
 	username: {
 		type: String,
 		unique: true,
 	},
 	userImage: {
+		type: String,
+	},
+	backgroundImage: {
 		type: String,
 	},
 	password: { type: String, required: true },

@@ -12,13 +12,14 @@ mongoose.connect(process.env.DB_CONNECTION_STRING)
 /**
  * App Configuration
  */
-app.use('/uploads', express.static('uploads'))
+
 app.use(
 	cors({
 		credentials: true,
 		origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
 	})
 )
+app.use('/uploads', express.static('uploads'))
 app.use(morgan('dev'))
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())

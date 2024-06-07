@@ -32,6 +32,7 @@ const UserAuthController = {
 								email: email,
 								password: hash,
 								username: userName[0],
+								joinedDate: new Date().toISOString(),
 							})
 								.then((result) => {
 									console.log(result)

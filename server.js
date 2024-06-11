@@ -6,6 +6,7 @@ import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import routes from './routes/index.js'
+import maintenanceMode from './middlewares/maintenanceMode.js'
 
 const app = express()
 mongoose.connect(process.env.DB_CONNECTION_STRING)
@@ -24,13 +25,13 @@ app.use(morgan('dev'))
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
 app.use(cookieParser())
+app.use(maintenanceMode)
 app.use(routes)
 
 /**
  * Error handler
  */
 app.use((err, req, res, next) => {
-	// console.log(err)
 	if (err && err.errorCode) {
 		res.status(err.errorCode).json({
 			message: err.message,

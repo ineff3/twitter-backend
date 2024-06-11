@@ -3,11 +3,18 @@ import PostModel from '../models/post.js'
 import UserModel from '../models/user.js'
 import ServerError from '../utils/server-error.js'
 import refactorPost from '../utils/refactorPost.js'
+import { getUserPostsCount } from '../services/userService.js'
+
+const MAX_POSTS_PER_USER = 10
 
 const PostController = {
 	createPost: async (req, res, next) => {
 		try {
-			console.log(req.files)
+			const userPostsCount = await getUserPostsCount(req.userId)
+			if (userPostsCount >= MAX_POSTS_PER_USER) {
+				throw new ServerError(400, 'User posts limit reached')
+			}
+
 			if (!req.body.text && !req.files) {
 				throw new ServerError(
 					404,

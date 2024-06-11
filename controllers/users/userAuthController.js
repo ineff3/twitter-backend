@@ -4,46 +4,45 @@ import ServerError from '../../utils/server-error.js'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import generateUsernamesArray from '../../utils/generate-usernames.js'
+import { getUserCount } from '../../services/userService.js'
+
+const MAX_USERS = 20
 
 const UserAuthController = {
-	signup: (req, res, next) => {
-		const { firstName, secondName, email, password } = req.body
-		UserModel.findOne({ email: email })
-			.exec()
-			.then((user) => {
-				if (user) {
-					throw new ServerError(
-						409,
-						'Auth failed: User with such email already exists'
-					)
-				} else {
-					bcrypt.hash(password, 10, (err, hash) => {
-						if (err) {
-							next(err)
-						} else {
-							const userName = generateUsernamesArray(
-								firstName,
-								1
-							)
-							UserModel.create({
-								_id: new mongoose.Types.ObjectId(),
-								firstName: firstName,
-								secondName: secondName,
-								email: email,
-								password: hash,
-								username: userName[0],
-								joinedDate: new Date().toISOString(),
-							})
-								.then((result) => {
-									console.log(result)
-									res.status(201).json(result)
-								})
-								.catch((err) => next(err))
-						}
-					})
-				}
+	signup: async (req, res, next) => {
+		try {
+			const userCount = await getUserCount()
+			if (userCount >= MAX_USERS) {
+				throw new ServerError(400, 'User registration limit reached')
+			}
+
+			const { firstName, secondName, email, password } = req.body
+
+			const existingUser = await UserModel.findOne({ email }).exec()
+			if (existingUser) {
+				throw new ServerError(
+					409,
+					'Auth failed: User with such email already exists'
+				)
+			}
+
+			const hash = await bcrypt.hash(password, 10)
+			const userName = generateUsernamesArray(firstName, 1)
+			const newUser = new UserModel({
+				_id: new mongoose.Types.ObjectId(),
+				firstName,
+				secondName,
+				email,
+				password: hash,
+				username: userName[0],
+				joinedDate: new Date().toISOString(),
 			})
-			.catch((err) => next(err))
+
+			const result = await newUser.save()
+			res.status(201).json(result)
+		} catch (error) {
+			next(error)
+		}
 	},
 
 	login: async (req, res, next) => {

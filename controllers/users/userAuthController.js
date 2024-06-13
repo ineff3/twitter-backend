@@ -1,9 +1,9 @@
 import mongoose from 'mongoose'
 import UserModel from '../../models/user.js'
-import ServerError from '../../utils/server-error.js'
+import ServerError from '../../utils/serverError.js'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
-import generateUsernamesArray from '../../utils/generate-usernames.js'
+import generateUsernamesArray from '../../utils/generateUsernames.js'
 import { getUserCount } from '../../services/userService.js'
 
 const MAX_USERS = 20
@@ -35,7 +35,6 @@ const UserAuthController = {
 				email,
 				password: hash,
 				username: userName[0],
-				joinedDate: new Date().toISOString(),
 			})
 
 			const result = await newUser.save()

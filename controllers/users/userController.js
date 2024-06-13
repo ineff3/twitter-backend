@@ -1,6 +1,6 @@
 import UserModel from '../../models/user.js'
-import ServerError from '../../utils/server-error.js'
-import generateUsernamesArray from '../../utils/generate-usernames.js'
+import ServerError from '../../utils/serverError.js'
+import generateUsernamesArray from '../../utils/generateUsernames.js'
 import fs from 'fs-extra'
 
 const UserController = {

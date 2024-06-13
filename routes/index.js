@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import usersRouter from './users.js'
 import postsRouter from './posts.js'
-import ServerError from '../utils/server-error.js'
+import ServerError from '../utils/serverError.js'
 
 const api = Router()
 api.use('/users', usersRouter)

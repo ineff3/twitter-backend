@@ -1,9 +1,10 @@
 import mongoose from 'mongoose'
 import PostModel from '../models/post.js'
 import UserModel from '../models/user.js'
-import ServerError from '../utils/server-error.js'
-import refactorPost from '../utils/refactorPost.js'
+import ServerError from '../utils/serverError.js'
+
 import { getUserPostsCount } from '../services/userService.js'
+import { getAllPosts, getBookmarkedPosts } from '../services/postService.js'
 
 const MAX_POSTS_PER_USER = 10
 
@@ -24,7 +25,6 @@ const PostController = {
 			const createdPost = await PostModel.create({
 				_id: new mongoose.Types.ObjectId(),
 				author: req.userId,
-				dateCreated: new Date().toISOString(),
 				text: req.body.text,
 				postImages: req.files.map((file) => file.path),
 				isLiked: false,
@@ -36,55 +36,11 @@ const PostController = {
 					select: 'firstName secondName username userImage',
 				})
 				.exec()
-			const updatedPost = populatedPost.toObject()
-			res.status(201).json({ ...updatedPost, likedBy: 0 })
+			res.status(201).json({ ...populatedPost.toObject(), likedBy: 0 })
 		} catch (err) {
 			next(err)
 		}
 	},
-	// 		const posts = await PostModel.find()
-	// 			.populate({
-	// 				path: 'author',
-	// 				select: '_id firstName secondName username userImage',
-	// 			})
-	// 			.exec()
-	// 		const user = await UserModel.findById(req.userId).exec()
-	// 		const updatedPosts = posts.map((post) => {
-	// 			const refactoredPostObj = refactorPost(post, user)
-	// 			return refactoredPostObj
-	// 			// return {
-	// 			// 	...postObj,
-	// 			// 	likedBy: post.likedBy.length,
-	// 			// 	isLiked: post.likedBy.indexOf(req.userId) != -1,
-	// 			// 	isBookmarked: user.bookmarks.indexOf(post._id) != -1,
-	// 			// }
-	// 		})
-	// 		res.status(200).json(updatedPosts)
-	// 	} catch (err) {
-	// 		next(err)
-	// 	}
-	// },
-	// getBookmarkedPosts: async (req, res, next) => {
-	// 	try {
-	// 		const userInitial = await UserModel.findById(req.userId).exec()
-	// 		const user = await UserModel.findById(req.userId)
-	// 			.populate({
-	// 				path: 'bookmarks',
-	// 				populate: {
-	// 					path: 'author',
-	// 					select: '_id firstName secondName username userImage',
-	// 				},
-	// 			})
-	// 			.exec()
-	// 		const refactoredBookmarks = user.bookmarks.map((post) => {
-	// 			return refactorPost(post, userInitial)
-	// 		})
-	// 		res.status(200).json(refactoredBookmarks)
-	// 	} catch (err) {
-	// 		next(err)
-	// 	}
-	// },
-	//+
 	likePost: async (req, res, next) => {
 		const postId = req.body.postId
 		try {
@@ -168,46 +124,6 @@ const PostController = {
 			next(err)
 		}
 	},
-}
-
-const getAllPosts = async (userId, limit, skip) => {
-	const [posts, totalCount] = await Promise.all([
-		PostModel.find()
-			.populate({
-				path: 'author',
-				select: '_id firstName secondName username userImage',
-			})
-			.limit(limit)
-			.skip(skip)
-			.exec(),
-		PostModel.countDocuments().exec(),
-	])
-
-	const user = await UserModel.findById(userId).exec()
-	const updatedPosts = posts.map((post) => refactorPost(post, user))
-
-	return { posts: updatedPosts, totalCount }
-}
-
-const getBookmarkedPosts = async (userId, limit, skip) => {
-	const userInitial = await UserModel.findById(userId).exec()
-	const user = await UserModel.findById(userId)
-		.populate({
-			path: 'bookmarks',
-			populate: {
-				path: 'author',
-				select: '_id firstName secondName username userImage',
-			},
-			options: { limit, skip },
-		})
-		.exec()
-
-	const refactoredBookmarks = user.bookmarks.map((post) =>
-		refactorPost(post, userInitial)
-	)
-	const totalCount = userInitial.bookmarks.length
-
-	return { posts: refactoredBookmarks, totalCount }
 }
 
 export default PostController

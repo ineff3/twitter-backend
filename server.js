@@ -9,7 +9,7 @@ import routes from './routes/index.js'
 import maintenanceMode from './middlewares/maintenanceMode.js'
 
 const app = express()
-mongoose.connect(process.env.DB_CONNECTION_STRING)
+mongoose.connect(process.env.DB_CONNECTION_STRING_DEPLOYMENT)
 /**
  * App Configuration
  */

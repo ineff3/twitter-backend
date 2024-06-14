@@ -2,6 +2,9 @@ import UserModel from '../../models/user.js'
 import ServerError from '../../utils/serverError.js'
 import generateUsernamesArray from '../../utils/generateUsernames.js'
 import fs from 'fs-extra'
+import { PutObjectCommand } from '@aws-sdk/client-s3'
+import s3 from '../../utils/s3Client.js'
+import sharp from 'sharp'
 
 const UserController = {
 	//requires check-auth middleware
@@ -64,48 +67,6 @@ const UserController = {
 		}
 	},
 
-	// 		const username = req.body.username
-	// 		if (!username)
-	// 			throw new ServerError(404, 'Username is not provided')
-
-	// 		const user = await UserModel.findOneAndUpdate(
-	// 			{ _id: req.userId },
-	// 			{ $set: { username: username } }
-	// 		).exec()
-	// 		res.sendStatus(200)
-	// 	} catch (err) {
-	// 		next(err)
-	// 	}
-	// },
-
-	// //requires image middleware
-	// updateUserImage: async (req, res, next) => {
-	// 	try {
-	// 		if (!req.file) {
-	// 			throw new ServerError(404, 'UserImage is not provided')
-	// 		}
-	// 		const user = await UserModel.findById(req.userId).exec()
-	// 		if (!user) {
-	// 			throw new ServerError(404, 'User is not found')
-	// 		}
-	// 		const oldPhoto = user.userImage
-	// 		if (oldPhoto) {
-	// 			await fs.remove(oldPhoto)
-	// 		}
-
-	// 		user.userImage = req.file.path
-	// 		await user.save()
-
-	// 		// const user = await UserModel.findOneAndUpdate(
-	// 		// 	{ _id: req.userId },
-	// 		// 	{ $set: { userImage: req.file.path } }
-	// 		// ).exec()
-	// 		res.sendStatus(200)
-	// 	} catch (err) {
-	// 		next(err)
-	// 	}
-	// },
-
 	//requires auth
 	getUserByName: async (req, res, next) => {
 		try {
@@ -150,15 +111,14 @@ const UserController = {
 			switch (updateType) {
 				case 'username':
 					await updateUsername(req.userId, newValue)
-					res.sendStatus(200)
 					break
 				case 'userImage':
 					await updateUserImage(req.userId, req.file)
-					res.sendStatus(200)
 					break
 				default:
 					throw new ServerError(404, 'Invalid update type')
 			}
+			res.sendStatus(200)
 		} catch (err) {
 			next(err)
 		}
@@ -214,13 +174,35 @@ const updateUserImage = async (userId, newUserImage) => {
 	if (!user) {
 		throw new ServerError(404, 'User is not found')
 	}
-	const oldPhoto = user.userImage
-	if (oldPhoto) {
-		await fs.remove(oldPhoto)
+	const resizedImageBuffer = await sharp(newUserImage.buffer)
+		.resize(200)
+		.toFormat('jpeg')
+		.jpeg({ quality: 80 })
+		.toBuffer()
+	const imageName = new Date().toISOString() + newUserImage.originalname
+	const params = {
+		Bucket: process.env.BUCKET_NAME,
+		Key: imageName,
+		Body: resizedImageBuffer,
+		ContentType: newUserImage.mimetype,
 	}
-
-	user.userImage = newUserImage.path
+	const command = new PutObjectCommand(params)
+	try {
+		await s3.send(command)
+		console.log('File uploaded successfully')
+	} catch (error) {
+		console.error('Error uploading file:', error)
+		throw new Error('Error uploading file')
+	}
+	user.userImage = imageName
 	await user.save()
+
+	// const oldPhoto = user.userImage
+	// if (oldPhoto) {
+	// 	await fs.remove(oldPhoto)
+	// }
+	// user.userImage = newUserImage.path
+	// await user.save()
 }
 
 export default UserController

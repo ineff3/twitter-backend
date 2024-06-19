@@ -2,20 +2,23 @@ import UserModel from '../../models/user.js'
 import ServerError from '../../utils/serverError.js'
 import generateUsernamesArray from '../../utils/generateUsernames.js'
 import fs from 'fs-extra'
-import { PutObjectCommand } from '@aws-sdk/client-s3'
-import s3 from '../../utils/s3Client.js'
 import sharp from 'sharp'
+import {
+	deleteImageFromBucket,
+	uploadImageToBucket,
+} from '../../utils/s3BucketUtils.js'
 
 const UserController = {
 	//requires check-auth middleware
 	getCurrentUserPreview: async (req, res, next) => {
 		try {
-			const user = await UserModel.findById(req.userId)
+			let user = await UserModel.findById(req.userId)
 				.select(' _id firstName username userImage')
 				.exec()
 			if (!user) {
 				throw new ServerError(404, 'User not found')
 			}
+			user = await user.attachSignedUrls()
 			res.status(200).json(user)
 		} catch (err) {
 			next(err)
@@ -180,29 +183,20 @@ const updateUserImage = async (userId, newUserImage) => {
 		.jpeg({ quality: 80 })
 		.toBuffer()
 	const imageName = new Date().toISOString() + newUserImage.originalname
-	const params = {
-		Bucket: process.env.BUCKET_NAME,
-		Key: imageName,
-		Body: resizedImageBuffer,
-		ContentType: newUserImage.mimetype,
-	}
-	const command = new PutObjectCommand(params)
-	try {
-		await s3.send(command)
-		console.log('File uploaded successfully')
-	} catch (error) {
-		console.error('Error uploading file:', error)
-		throw new Error('Error uploading file')
+	//Saving the new user image to s3 bucket
+	await uploadImageToBucket(
+		imageName,
+		resizedImageBuffer,
+		newUserImage.mimtype
+	)
+
+	// Handling existing image (if it was)
+	const oldImage = user.userImage
+	if (oldImage) {
+		await deleteImageFromBucket(oldImage)
 	}
 	user.userImage = imageName
 	await user.save()
-
-	// const oldPhoto = user.userImage
-	// if (oldPhoto) {
-	// 	await fs.remove(oldPhoto)
-	// }
-	// user.userImage = newUserImage.path
-	// await user.save()
 }
 
 export default UserController

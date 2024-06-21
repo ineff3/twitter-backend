@@ -1,4 +1,4 @@
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { getSignedUrl } from '@aws-sdk/cloudfront-signer'
 import {
 	GetObjectCommand,
 	DeleteObjectCommand,
@@ -6,13 +6,13 @@ import {
 } from '@aws-sdk/client-s3'
 import s3 from './s3Client.js'
 
-export const getSignedImageUrl = async (imageName) => {
-	const getObjectParams = {
-		Bucket: process.env.BUCKET_NAME,
-		Key: imageName,
-	}
-	const command = new GetObjectCommand(getObjectParams)
-	const url = await getSignedUrl(s3, command, { expiresIn: 3600 })
+export const getSignedImageUrl = (imageName) => {
+	const url = getSignedUrl({
+		url: process.env.CLOUDFRONT_DOMAIN_NAME + imageName,
+		dateLessThan: new Date(Date.now() + 1000 * 60 * 60 * 24), // 24 hours
+		privateKey: process.env.CLOUDFRONT_PRIVATE_KEY,
+		keyPairId: process.env.CLOUDFRONT_KEY_PAIR_ID,
+	})
 	return url
 }
 

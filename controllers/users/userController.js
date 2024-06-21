@@ -7,6 +7,7 @@ import {
 	deleteImageFromBucket,
 	uploadImageToBucket,
 } from '../../utils/s3BucketUtils.js'
+import invalidateCloudFrontCache from '../../utils/cloudFrontActions.js'
 
 const UserController = {
 	//requires check-auth middleware
@@ -18,7 +19,6 @@ const UserController = {
 			if (!user) {
 				throw new ServerError(404, 'User not found')
 			}
-			user = await user.attachSignedUrls()
 			res.status(200).json(user)
 		} catch (err) {
 			next(err)
@@ -182,20 +182,17 @@ const updateUserImage = async (userId, newUserImage) => {
 		.toFormat('jpeg')
 		.jpeg({ quality: 80 })
 		.toBuffer()
-	const imageName = new Date().toISOString() + newUserImage.originalname
+	const newImageName = new Date().toISOString() + newUserImage.originalname
 	//Saving the new user image to s3 bucket
-	await uploadImageToBucket(
-		imageName,
-		resizedImageBuffer,
-		newUserImage.mimtype
-	)
+	await uploadImageToBucket(newImageName, resizedImageBuffer, 'image/jpeg')
 
 	// Handling existing image (if it was)
 	const oldImage = user.userImage
 	if (oldImage) {
 		await deleteImageFromBucket(oldImage)
+		await invalidateCloudFrontCache(oldImage)
 	}
-	user.userImage = imageName
+	user.userImage = newImageName
 	await user.save()
 }
 

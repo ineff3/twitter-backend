@@ -36,16 +36,10 @@ const userSchema = new mongoose.Schema(
 )
 
 userSchema.virtual('userImageUrl').get(function () {
-	return this._userImageUrl
-})
-
-// Method to attach signed URL
-userSchema.methods.attachSignedUrls = async function () {
 	if (this.userImage) {
-		this._userImageUrl = await getSignedImageUrl(this.userImage)
+		return getSignedImageUrl(this.userImage)
 	}
-	return this
-}
+})
 
 userSchema.set('toJSON', { virtuals: true })
 userSchema.set('toObject', { virtuals: true })

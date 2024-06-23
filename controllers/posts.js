@@ -4,9 +4,14 @@ import UserModel from '../models/user.js'
 import ServerError from '../utils/serverError.js'
 
 import { getUserPostsCount } from '../services/userService.js'
-import { getAllPosts, getBookmarkedPosts } from '../services/postService.js'
+import {
+	getAllPosts,
+	getBookmarkedPosts,
+	uploadPostImage,
+} from '../services/postService.js'
 
 const MAX_POSTS_PER_USER = 10
+const S3_IMAGE_FOLDER = 'posts'
 
 const PostController = {
 	createPost: async (req, res, next) => {
@@ -22,11 +27,38 @@ const PostController = {
 					'Neither post text nor image provided!'
 				)
 			}
+			let postFiles = []
+			if (req.files && req.files.length > 0) {
+				postFiles = req.files.map((file) => ({
+					...file,
+					newName: new Date().toISOString() + file.originalname,
+				}))
+
+				await Promise.all(
+					postFiles.map(async (file) => {
+						try {
+							await uploadPostImage(
+								file.buffer,
+								file.newName,
+								S3_IMAGE_FOLDER
+							)
+						} catch (error) {
+							console.error(
+								`Failed to upload file: ${file.originalname}`,
+								error
+							)
+						}
+					})
+				)
+			}
+
 			const createdPost = await PostModel.create({
 				_id: new mongoose.Types.ObjectId(),
 				author: req.userId,
 				text: req.body.text,
-				postImages: req.files.map((file) => file.path),
+				postImages: postFiles.map(
+					(file) => `${S3_IMAGE_FOLDER}/${file.newName}`
+				),
 				isLiked: false,
 				likedBy: [],
 			})

@@ -40,7 +40,11 @@ userSchema.virtual('userImageUrl').get(function () {
 		return getSignedImageUrl(this.userImage)
 	}
 })
-
+userSchema.virtual('backgroundImageUrl').get(function () {
+	if (this.backgroundImage) {
+		return getSignedImageUrl(this.backgroundImage)
+	}
+})
 userSchema.set('toJSON', { virtuals: true })
 userSchema.set('toObject', { virtuals: true })
 

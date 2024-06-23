@@ -138,25 +138,15 @@ const UserController = {
 		if (bio !== undefined) user.bio = bio
 		if (location !== undefined) user.location = location
 		if (link !== undefined) user.link = link
-
-		console.log(userImage)
+		await user.save()
 
 		if (userImage?.length > 0) {
-			const oldUserImage = user.userImage
-			if (oldUserImage) {
-				await fs.remove(oldUserImage)
-			}
-			user.userImage = userImage[0].path
+			await updateUserImage(req.userId, userImage[0])
 		}
 		if (backgroundImage?.length > 0) {
-			const oldBackgroundImage = user.backgroundImage
-			if (oldBackgroundImage) {
-				await fs.remove(oldBackgroundImage)
-			}
-			user.backgroundImage = backgroundImage[0].path
+			await updateBackgroundImage(req.userId, backgroundImage[0])
 		}
 
-		await user.save()
 		res.sendStatus(200)
 	},
 }
@@ -193,6 +183,32 @@ const updateUserImage = async (userId, newUserImage) => {
 		await invalidateCloudFrontCache(oldImage)
 	}
 	user.userImage = newImageName
+	await user.save()
+}
+
+const updateBackgroundImage = async (userId, newBackgroundImage) => {
+	if (!newBackgroundImage) {
+		throw new ServerError(404, 'Background image is not provided')
+	}
+	const user = await UserModel.findById(userId).exec()
+	if (!user) {
+		throw new ServerError(404, 'User is not found')
+	}
+	const buffer = await sharp(newBackgroundImage.buffer)
+		.toFormat('jpeg')
+		.toBuffer()
+	const newBackgroundImgName =
+		new Date().toISOString() + newBackgroundImage.originalname
+	//Saving the new user image to s3 bucket
+	await uploadImageToBucket(newBackgroundImgName, buffer, 'image/jpeg')
+
+	// Handling existing image (if it was)
+	const oldImage = user.backgroundImage
+	if (oldImage) {
+		await deleteImageFromBucket(oldImage)
+		await invalidateCloudFrontCache(oldImage)
+	}
+	user.backgroundImage = newBackgroundImgName
 	await user.save()
 }
 

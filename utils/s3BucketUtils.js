@@ -34,11 +34,12 @@ export const deleteImageFromBucket = async (imageName) => {
 export const uploadImageToBucket = async (
 	imageName,
 	imageBuffer,
-	imageMimetype
+	imageMimetype,
+	folder
 ) => {
 	const params = {
 		Bucket: process.env.BUCKET_NAME,
-		Key: imageName,
+		Key: folder ? `${folder}/${imageName}` : imageName,
 		Body: imageBuffer,
 		ContentType: imageMimetype,
 	}

@@ -7,8 +7,10 @@ import { getUserPostsCount } from '../services/userService.js'
 import {
 	getAllPosts,
 	getBookmarkedPosts,
-	uploadPostImage,
+	getLikedPosts,
 } from '../services/postService.js'
+import { deleteImageFromBucket } from '../utils/s3BucketUtils.js'
+import uploadFilesArray from '../utils/files/uploadFilesArray.js'
 
 const MAX_POSTS_PER_USER = 10
 const S3_IMAGE_FOLDER = 'posts'
@@ -27,30 +29,7 @@ const PostController = {
 					'Neither post text nor image provided!'
 				)
 			}
-			let postFiles = []
-			if (req.files && req.files.length > 0) {
-				postFiles = req.files.map((file) => ({
-					...file,
-					newName: new Date().toISOString() + file.originalname,
-				}))
-
-				await Promise.all(
-					postFiles.map(async (file) => {
-						try {
-							await uploadPostImage(
-								file.buffer,
-								file.newName,
-								S3_IMAGE_FOLDER
-							)
-						} catch (error) {
-							console.error(
-								`Failed to upload file: ${file.originalname}`,
-								error
-							)
-						}
-					})
-				)
-			}
+			let postFiles = await uploadFilesArray(req.files, S3_IMAGE_FOLDER)
 
 			const createdPost = await PostModel.create({
 				_id: new mongoose.Types.ObjectId(),
@@ -120,7 +99,7 @@ const PostController = {
 	},
 	getPosts: async (req, res, next) => {
 		try {
-			const { bookmarked, limit, page } = req.query
+			const { bookmarked, liked, limit, page } = req.query
 			const userId = req.userId
 
 			const paginationLimit = parseInt(limit) || 10
@@ -129,7 +108,15 @@ const PostController = {
 
 			let posts = []
 			let totalCount = 0
-			if (bookmarked === 'true') {
+			if (bookmarked === 'true' && liked === 'true') {
+				throw new ServerError(500, 'Logic not implemented')
+			} else if (liked === 'true') {
+				;({ posts, totalCount } = await getLikedPosts(
+					userId,
+					paginationLimit,
+					skip
+				))
+			} else if (bookmarked === 'true') {
 				;({ posts, totalCount } = await getBookmarkedPosts(
 					userId,
 					paginationLimit,
@@ -154,6 +141,84 @@ const PostController = {
 			})
 		} catch (err) {
 			next(err)
+		}
+	},
+	getUserPosts: async (req, res, next) => {
+		try {
+			const { userId } = req.params
+			const { limit, page } = req.query
+
+			const paginationLimit = parseInt(limit) || 10
+			const paginationPage = parseInt(page) || 1
+			const skip = (paginationPage - 1) * paginationLimit
+
+			const [posts, totalCount] = await Promise.all([
+				PostModel.find({ author: userId })
+					.sort({ createdAt: -1 })
+					.populate({
+						path: 'author',
+						select: '_id firstName secondName username userImage',
+					})
+					.limit(paginationLimit)
+					.skip(skip)
+					.exec(),
+				PostModel.countDocuments({ author: userId }).exec(),
+			])
+
+			const totalPages = Math.ceil(totalCount / paginationLimit)
+			const nextPage =
+				paginationPage < totalPages ? paginationPage + 1 : null
+
+			const user = await UserModel.findById(req.userId).exec()
+			const updatedPosts = posts.map((post) => post.refactorPost(user))
+
+			res.status(200).json({
+				data: updatedPosts,
+				nextPage,
+				totalPages,
+			})
+		} catch (err) {
+			next(err)
+		}
+	},
+	deletePost: async (req, res, next) => {
+		const session = await mongoose.startSession()
+		session.startTransaction()
+		try {
+			const postId = req.params.postId
+			const post = await PostModel.findById(postId).exec()
+			if (!post) {
+				throw new ServerError(404, 'Post was not found')
+			}
+			if (req.userId !== post.author._id.toString()) {
+				throw new ServerError(
+					403,
+					'Access denied. The user id and post author id are different'
+				)
+			}
+
+			await UserModel.updateMany(
+				{ bookmarks: postId },
+				{ $pull: { bookmarks: postId } }
+			).session(session)
+
+			const { postImages } = post
+			if (postImages && postImages.length > 0) {
+				await Promise.all(
+					postImages.map(async (imagePath) => {
+						await deleteImageFromBucket(imagePath)
+					})
+				)
+			}
+
+			await PostModel.findByIdAndDelete(postId).session(session).exec()
+			await session.commitTransaction()
+			res.sendStatus(200)
+		} catch (err) {
+			await session.abortTransaction()
+			next(err)
+		} finally {
+			session.endSession()
 		}
 	},
 }

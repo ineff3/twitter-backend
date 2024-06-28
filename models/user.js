@@ -31,6 +31,13 @@ const userSchema = new mongoose.Schema(
 		password: { type: String, required: true },
 		bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
 		refreshToken: String,
+		drafts: [
+			{
+				_id: mongoose.Schema.Types.ObjectId,
+				text: { type: String },
+				postImages: [{ type: String }],
+			},
+		],
 	},
 	{ timestamps: true }
 )
@@ -45,6 +52,17 @@ userSchema.virtual('backgroundImageUrl').get(function () {
 		return getSignedImageUrl(this.backgroundImage)
 	}
 })
+userSchema.methods.appendDraftUrls = function () {
+	return {
+		...this.toObject(),
+		drafts: this.drafts.map((draft) => ({
+			...draft.toObject(),
+			draftImageUrls: draft.postImages.map((imagePath) =>
+				getSignedImageUrl(imagePath)
+			),
+		})),
+	}
+}
 userSchema.set('toJSON', { virtuals: true })
 userSchema.set('toObject', { virtuals: true })
 

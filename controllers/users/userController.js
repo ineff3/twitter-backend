@@ -83,7 +83,7 @@ const UserController = {
 			const providedUser = await UserModel.findOne({
 				username: providedUsername,
 			})
-				.select(' -refreshToken -__v -password')
+				.select(' -refreshToken -__v -password -drafts')
 				.exec()
 			if (!providedUser) {
 				throw new ServerError(

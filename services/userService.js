@@ -16,3 +16,11 @@ export const getUserPostsCount = async (userId) => {
 		throw new ServerError(500, 'Error in fetching user posts count')
 	}
 }
+
+export const getUserById = async (userId) => {
+	const user = await UserModel.findById(userId).exec()
+	if (!user) {
+		throw new ServerError(404, 'User is not found')
+	}
+	return user
+}

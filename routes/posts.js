@@ -4,18 +4,22 @@ import upload from '../middlewares/handleImage.js'
 import PostController from '../controllers/posts.js'
 
 const router = Router()
+router.use('/', checkAuth)
+router.post('/like', PostController.likePost)
 
-router.post('/like', checkAuth, PostController.likePost)
+router.post('/bookmark', PostController.bookmarkPost)
 
-router.post('/bookmark', checkAuth, PostController.bookmarkPost)
+router.get('', PostController.getPosts)
 
-router.get('', checkAuth, PostController.getPosts)
+router.get('/:userId', PostController.getUserPosts)
 
 router.post(
 	'',
-	checkAuth,
+
 	upload('posts').array('postImages', 4),
 	PostController.createPost
 )
+
+router.delete('/:postId', PostController.deletePost)
 
 export default router

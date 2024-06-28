@@ -32,6 +32,7 @@ app.use(routes)
  * Error handler
  */
 app.use((err, req, res, next) => {
+	console.log('', err)
 	if (err && err.errorCode) {
 		res.status(err.errorCode).json({
 			message: err.message,

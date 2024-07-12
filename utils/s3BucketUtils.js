@@ -1,9 +1,5 @@
 import { getSignedUrl } from '@aws-sdk/cloudfront-signer'
-import {
-	GetObjectCommand,
-	DeleteObjectCommand,
-	PutObjectCommand,
-} from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import s3 from './s3Client.js'
 
 export const getSignedImageUrl = (imageName) => {

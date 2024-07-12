@@ -1,5 +1,5 @@
 import mongoose from 'mongoose'
-import UserModel from '../models/user.js'
+import ServerError from '../utils/serverError.js'
 import { getUserById } from '../services/userService.js'
 import uploadFilesArray from '../utils/files/uploadFilesArray.js'
 
@@ -39,10 +39,48 @@ const DraftsController = {
 		try {
 			const user = await getUserById(req.userId)
 			const { draftId } = req.params
-			const newDrafts = user.drafts.filter(
+			const draftExists = user.drafts.some(
+				(draft) => draft._id.toString() === draftId
+			)
+
+			if (!draftExists) {
+				return res.status(404).json({ message: 'Draft not found' })
+			}
+
+			// Filter out the draft with the given ID
+			user.drafts = user.drafts.filter(
 				(draft) => draft._id.toString() !== draftId
 			)
-			user.drafts = newDrafts
+			await user.save()
+			res.sendStatus(200)
+		} catch (err) {
+			next(err)
+		}
+	},
+	deleteMultipleDrafts: async (req, res, next) => {
+		const { draftIds } = req.query
+		try {
+			if (!draftIds) {
+				throw new ServerError('404', 'Id is not provided')
+			}
+			let draftIdsArr = []
+			if (!Array.isArray(draftIds)) {
+				draftIdsArr = [draftIds]
+			} else {
+				draftIdsArr = [...draftIds]
+			}
+
+			if (
+				draftIdsArr.some(
+					(draftId) => !mongoose.Types.ObjectId.isValid(draftId)
+				)
+			) {
+				throw new ServerError(400, 'Invalid draft Ids')
+			}
+			const user = await getUserById(req.userId)
+			user.drafts = user.drafts.filter(
+				(draft) => !draftIdsArr.includes(draft._id.toString())
+			)
 			await user.save()
 			res.sendStatus(200)
 		} catch (err) {

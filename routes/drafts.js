@@ -16,4 +16,6 @@ router.get('/', DraftsController.getDrafts)
 
 router.delete('/:draftId', DraftsController.deleteDraft)
 
+router.delete('/', DraftsController.deleteMultipleDrafts)
+
 export default router

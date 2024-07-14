@@ -1,4 +1,4 @@
-const generateUsernamesArray = (firstName, arraySize) => {
+export const generateUsernames = (firstName, arraySize) => {
 	const arr = []
 
 	for (let i = 0; i < arraySize; i++) {
@@ -10,5 +10,3 @@ const generateUsernamesArray = (firstName, arraySize) => {
 	}
 	return arr
 }
-
-export default generateUsernamesArray

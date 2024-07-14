@@ -21,13 +21,11 @@ const fileFilter = (req, file, cb) => {
 		cb(null, false)
 	}
 }
-const upload = (path) =>
-	multer({
-		// storage: storage(path),
-		limits: {
-			fileSize: 1024 * 1024 * 3, //3MB
-		},
-		fileFilter: fileFilter,
-	})
 
-export default upload
+export const upload = multer({
+	// storage: storage(path),
+	limits: {
+		fileSize: 1024 * 1024 * 3, //3MB
+	},
+	fileFilter: fileFilter,
+})

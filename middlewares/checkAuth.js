@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken'
 
 //middleware fails if there is no token passed through the body
-const checkAuth = (req, res, next) => {
+export const checkAuth = (req, res, next) => {
 	try {
 		const authHeader = req.headers.authorization
 		if (!authHeader?.startsWith('Bearer '))
@@ -17,5 +17,3 @@ const checkAuth = (req, res, next) => {
 	}
 	next()
 }
-
-export default checkAuth

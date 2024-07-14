@@ -1,46 +1,80 @@
 import mongoose from 'mongoose'
-import { getSignedImageUrl } from '../utils/s3BucketUtils.js'
+import { userSchema } from '../schemas/user.js'
+import { getSignedImageUrl } from '../shared/s3/s3BucketActions.js'
+import {
+	BaseError,
+	NotFoundError,
+	UnauthorizedError,
+} from '../shared/BaseError.js'
+import bcrypt from 'bcrypt'
 
-const userSchema = new mongoose.Schema(
-	{
-		_id: mongoose.Schema.Types.ObjectId,
-		firstName: { type: String, required: true },
-		secondName: { type: String, required: true },
-		email: {
-			type: String,
-			required: true,
-			unique: true,
-			match: /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/,
-		},
-		bio: { type: String },
-		location: { type: String },
-		link: { type: String },
-		username: {
-			type: String,
-			unique: true,
-		},
-		userImage: {
-			type: String,
-		},
-		backgroundImage: {
-			type: String,
-		},
-		bornDate: {
-			type: String,
-		},
-		password: { type: String, required: true },
-		bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
-		refreshToken: String,
-		drafts: [
-			{
-				_id: mongoose.Schema.Types.ObjectId,
-				text: { type: String },
-				postImages: [{ type: String }],
-			},
-		],
+const statics = {
+	async getUserById(userId) {
+		const user = await this.findById(userId)
+		if (!user) {
+			throw new NotFoundError('User')
+		}
+
+		return user
 	},
-	{ timestamps: true }
-)
+	async createUser(newUser) {
+		const userExists = await this.findOne({ email: newUser.email })
+		if (userExists) {
+			throw new BaseError(
+				'CONFLICT_ERROR',
+				409,
+				'User with such email already exists'
+			)
+		}
+		const user = await this.create(newUser)
+		return user.toObject()
+	},
+	async findByEmailAndValidatePassword(email, password) {
+		const user = await this.findOne({ email })
+		if (!user) {
+			throw new NotFoundError('User')
+		}
+		const match = await bcrypt.compare(password, user.password)
+		if (!match) {
+			throw new UnauthorizedError('wrong creadentials')
+		}
+		return user
+	},
+	async findByRefreshToken() {
+		const user = await this.findOne({ refreshToken })
+		if (!user) {
+			throw new NotFoundError('User')
+		}
+		return user
+	},
+	async saveRefreshToken(userId, refreshToken) {
+		const user = await this.getUserById(userId)
+		user.refreshToken = refreshToken
+		await user.save()
+	},
+	async logoutUserByToken(refreshToken) {
+		const user = this.findByRefreshToken(refreshToken)
+		user.refreshToken = ''
+		await user.save()
+	},
+}
+
+const methods = {
+	appendDraftUrls() {
+		return {
+			...this.toObject(),
+			drafts: this.drafts.map((draft) => ({
+				...draft.toObject(),
+				draftImageUrls: draft.postImages.map((imagePath) =>
+					getSignedImageUrl(imagePath)
+				),
+			})),
+		}
+	},
+}
+
+Object.assign(userSchema.statics, statics)
+Object.assign(userSchema.methods, methods)
 
 userSchema.virtual('userImageUrl').get(function () {
 	if (this.userImage) {
@@ -52,18 +86,8 @@ userSchema.virtual('backgroundImageUrl').get(function () {
 		return getSignedImageUrl(this.backgroundImage)
 	}
 })
-userSchema.methods.appendDraftUrls = function () {
-	return {
-		...this.toObject(),
-		drafts: this.drafts.map((draft) => ({
-			...draft.toObject(),
-			draftImageUrls: draft.postImages.map((imagePath) =>
-				getSignedImageUrl(imagePath)
-			),
-		})),
-	}
-}
+
 userSchema.set('toJSON', { virtuals: true })
 userSchema.set('toObject', { virtuals: true })
 
-export default mongoose.model('User', userSchema)
+export const UserModel = mongoose.model('User', userSchema)

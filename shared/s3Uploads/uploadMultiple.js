@@ -1,7 +1,7 @@
-import { uploadPostImage } from '../../services/postService.js'
+import { uploadPostImage } from './uploadPostImage.js'
 
-//uploads array of files to s3 bucket and returns update array, with the appropriate newName to get retrieve it from s3
-const uploadFilesArray = async (files, uploadPath) => {
+//uploads array of files to s3 bucket and returns update array, with the appropriate newName to retrieve it from s3
+export const uploadFilesArray = async (files, uploadPath) => {
 	try {
 		let filesArray = []
 		if (files && files.length > 0) {
@@ -32,5 +32,3 @@ const uploadFilesArray = async (files, uploadPath) => {
 		console.log(err)
 	}
 }
-
-export default uploadFilesArray

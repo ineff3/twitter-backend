@@ -163,10 +163,10 @@ export class PostService {
 		const totalCount = await this.UserModel.countDocuments({
 			bookmarks: userId,
 		})
+		console.log(refactoredBookmarks)
 
 		return { posts: refactoredBookmarks, totalCount }
 	}
-
 	async getUserPosts(userId, limit, skip) {
 		const [posts, totalCount] = await Promise.all([
 			this.PostModel.find({ author: userId })
@@ -184,5 +184,32 @@ export class PostService {
 		const updatedPosts = posts.map((post) => post.refactorPost(user))
 
 		return { posts: updatedPosts, totalCount }
+	}
+	async likePost(postId, userId) {
+		const post = await this.PostModel.findById(postId)
+		if (!post) {
+			throw new NotFoundError('Post')
+		}
+		const postWasLiked = post.likedBy.indexOf(userId)
+		if (postWasLiked == -1) {
+			post.likedBy.push(userId)
+		} else {
+			post.likedBy.splice(postWasLiked, 1)
+		}
+		await post.save()
+	}
+	async bookmarkPost(postId, userId) {
+		const post = await this.PostModel.findById(postId)
+		if (!post) {
+			throw new NotFoundError('Post')
+		}
+		const user = await this.UserModel.findById(userId)
+		const bookmarkedPostIndex = user.bookmarks.indexOf(postId)
+		if (bookmarkedPostIndex != -1) {
+			user.bookmarks.splice(bookmarkedPostIndex, 1)
+		} else {
+			user.bookmarks.push(postId)
+		}
+		await user.save()
 	}
 }

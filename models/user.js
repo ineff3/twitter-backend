@@ -40,7 +40,7 @@ const statics = {
 		}
 		return user
 	},
-	async findByRefreshToken() {
+	async findByRefreshToken(refreshToken) {
 		const user = await this.findOne({ refreshToken })
 		if (!user) {
 			throw new NotFoundError('User')

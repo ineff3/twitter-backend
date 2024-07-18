@@ -80,4 +80,22 @@ export const PostController = {
 			next(err)
 		}
 	},
+	async likePost(req, res, next) {
+		const { postId } = req.params
+		try {
+			await postServiceInstance.likePost(postId, req.userId)
+			res.sendStatus(204)
+		} catch (err) {
+			next(err)
+		}
+	},
+	async bookmarkPost(req, res, next) {
+		const { postId } = req.params
+		try {
+			await postServiceInstance.bookmarkPost(postId, req.userId)
+			res.sendStatus(204)
+		} catch (err) {
+			next(err)
+		}
+	},
 }

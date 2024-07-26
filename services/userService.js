@@ -27,7 +27,7 @@ export class UserService {
 		}
 
 		const hashedPassword = await bcrypt.hash(userData.password, 10)
-		const generatedUsername = generateUsernamesArray(userData.firstName, 1)
+		const generatedUsername = generateUsernames(userData.firstName, 1)
 
 		const createdUser = await this.UserModel.createUser({
 			...userData,
@@ -167,10 +167,10 @@ export class UserService {
 
 		const { userImage, backgroundImage } = files
 		if (userImage?.length > 0) {
-			await updateUserImage(userId, userImage[0])
+			await this.updateUserImage(userId, userImage[0])
 		}
 		if (backgroundImage?.length > 0) {
-			await updateBackgroundImage(userId, backgroundImage[0])
+			await this.updateBackgroundImage(userId, backgroundImage[0])
 		}
 
 		return user

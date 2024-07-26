@@ -5,19 +5,26 @@ import mongoose from 'mongoose'
 const statics = {}
 Object.assign(postSchema.statics, statics)
 
-postSchema.methods.refactorPost = function (user) {
-	const postObj = this.toObject()
+postSchema.methods.refactorPost = function (userId) {
 	return {
-		...postObj,
-		likedBy: this.likedBy.length,
-		isLiked: this.likedBy.indexOf(user._id) !== -1,
-		isBookmarked: user.bookmarks.indexOf(this._id) !== -1,
+		_id: this._id,
+		author: this.author,
+		text: this.text,
+		postImages: this.postImages,
+		postImageUrls: this.postImageUrls,
+		createdAt: this.createdAt,
+		likesCount: this.likesCount,
+		isLiked: this.likedBy.indexOf(userId) !== -1,
+		isBookmarked: this.bookmarkedBy.indexOf(userId) !== -1,
 	}
 }
 postSchema.virtual('postImageUrls').get(function () {
 	if (this.postImages && this.postImages.length > 0) {
 		return this.postImages.map((path) => getSignedImageUrl(path))
 	}
+})
+postSchema.virtual('likesCount').get(function () {
+	return this.likedBy.length
 })
 
 postSchema.set('toJSON', { virtuals: true })

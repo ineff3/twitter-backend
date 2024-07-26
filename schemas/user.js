@@ -28,7 +28,6 @@ export const userSchema = new mongoose.Schema(
 			type: String,
 		},
 		password: { type: String, required: true },
-		bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
 		refreshToken: String,
 		drafts: [
 			{

@@ -59,10 +59,6 @@ export class PostService {
 					'Access denied. The user id and post author id are different'
 				)
 			}
-			await this.UserModel.updateMany(
-				{ bookmarks: postId },
-				{ $pull: { bookmarks: postId } }
-			).session(session)
 
 			const { postImages } = post
 			if (postImages && postImages.length > 0) {
@@ -90,82 +86,31 @@ export class PostService {
 		const paginationLimit = parseInt(limit)
 		const paginationPage = parseInt(page)
 		const skip = (paginationPage - 1) * paginationLimit
+		const options = {}
 
 		if (bookmarked === 'true' && liked === 'true') {
-			throw new BaseError('SERVER_ERROR', 500, 'Logic not implemented')
+			options.$and = [{ bookmarkedBy: userId }, { likedBy: userId }]
+		} else if (bookmarked === 'true') {
+			options.bookmarkedBy = userId
+		} else if (liked === 'true') {
+			options.likedBy = userId
 		}
 
-		if (liked === 'true') {
-			return this.getLikedPosts(userId, paginationLimit, skip)
-		}
-
-		if (bookmarked === 'true') {
-			return this.getBookmarkedPosts(userId, paginationLimit, skip)
-		}
-
-		return this.getAllPosts(userId, paginationLimit, skip)
-	}
-	async getAllPosts(userId, limit, skip) {
 		const [posts, totalCount] = await Promise.all([
-			this.PostModel.find()
+			this.PostModel.find(options)
 				.sort({ createdAt: -1 })
 				.populate({
 					path: 'author',
 					select: '_id firstName secondName username userImage',
 				})
-				.limit(limit)
+				.limit(paginationLimit)
 				.skip(skip),
-			this.PostModel.countDocuments(),
+			this.PostModel.countDocuments(query),
 		])
 
-		const user = await this.UserModel.findById(userId)
-		const updatedPosts = posts.map((post) => post.refactorPost(user))
+		const updatedPosts = posts.map((post) => post.refactorPost(userId))
 
 		return { posts: updatedPosts, totalCount }
-	}
-	async getLikedPosts(userId, limit, skip) {
-		const user = await this.UserModel.findById(userId)
-		if (!user) {
-			throw new NotFoundError(404, 'User')
-		}
-
-		const [posts, totalCount] = await Promise.all([
-			this.PostModel.find({ likedBy: userId })
-				.sort({ createdAt: -1 })
-				.populate({
-					path: 'author',
-					select: '_id firstName secondName username userImage',
-				})
-				.limit(limit)
-				.skip(skip),
-			this.PostModel.countDocuments({ likedBy: userId }),
-		])
-		const updatedPosts = posts.map((post) => post.refactorPost(user))
-		return { posts: updatedPosts, totalCount }
-	}
-	async getBookmarkedPosts(userId, limit, skip) {
-		const user = await this.UserModel.findById(userId).populate({
-			path: 'bookmarks',
-			populate: {
-				path: 'author',
-				select: '_id firstName secondName username userImage',
-			},
-			options: { limit, skip },
-		})
-
-		if (!user) {
-			throw new NotFoundError('User')
-		}
-
-		const refactoredBookmarks = user.bookmarks.map((post) =>
-			post.refactorPost(user)
-		)
-		const totalCount = await this.UserModel.countDocuments({
-			bookmarks: userId,
-		})
-		console.log(refactoredBookmarks)
-
-		return { posts: refactoredBookmarks, totalCount }
 	}
 	async getUserPosts(userId, limit, skip) {
 		const [posts, totalCount] = await Promise.all([
@@ -180,8 +125,7 @@ export class PostService {
 			this.PostModel.countDocuments({ author: userId }),
 		])
 
-		const user = await this.UserModel.findById(userId)
-		const updatedPosts = posts.map((post) => post.refactorPost(user))
+		const updatedPosts = posts.map((post) => post.refactorPost(userId))
 
 		return { posts: updatedPosts, totalCount }
 	}
@@ -203,13 +147,12 @@ export class PostService {
 		if (!post) {
 			throw new NotFoundError('Post')
 		}
-		const user = await this.UserModel.findById(userId)
-		const bookmarkedPostIndex = user.bookmarks.indexOf(postId)
-		if (bookmarkedPostIndex != -1) {
-			user.bookmarks.splice(bookmarkedPostIndex, 1)
+		const postWasBookmarked = post.bookmarkedBy.indexOf(userId)
+		if (postWasBookmarked == -1) {
+			post.bookmarkedBy.push(userId)
 		} else {
-			user.bookmarks.push(postId)
+			post.bookmarkedBy.splice(postWasBookmarked, 1)
 		}
-		await user.save()
+		await post.save()
 	}
 }

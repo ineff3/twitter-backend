@@ -9,6 +9,7 @@ export const postSchema = new mongoose.Schema(
 			required: true,
 		},
 		likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+		bookmarkedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 		text: { type: String },
 		postImages: [{ type: String }],
 	},
